@@ -23,10 +23,6 @@ evaluation.
 This is a single, unified project. All dataset pipelines share the same overall
 design and write their artifacts into a common `outputs/` directory.
 
-> **Important:** Read the [Known limitations and required corrections](#known-limitations-and-required-corrections)
-> section before running the full pipeline. The present scripts are research
-> prototypes with hard-coded configuration values and several path/checkpoint
-> inconsistencies that affect some branches.
 
 ## Contents
 
@@ -507,119 +503,7 @@ mkdir -p logs
 python MNIST/moe-training-mnist.py 2>&1 | tee logs/mnist_moe_training.log
 ```
 
-## Known limitations and required corrections
 
-The following points were identified directly from the current scripts.
-
-### 1. CIFAR-10 soft-routing path mismatch
-
-`CIFAR-10/Soft-routing-inference-cifar10.py` sets:
-
-```python
-BASE = "outputs/cifar"
-```
-
-Every upstream CIFAR script writes under `outputs/cifar10_*`. Change it to:
-
-```python
-BASE = "outputs/cifar10"
-```
-
-before running soft-routing inference.
-
-### 2. CIFAR-10 zero-shot cluster count is incorrect
-
-`CIFAR-10/zero-shot-training-cifar10.py` currently uses:
-
-```python
-NUM_CLUSTERS = 43
-```
-
-The CIFAR clustering script creates 10 clusters, and its zero-shot evaluator also
-expects 10. Change the trainer to:
-
-```python
-NUM_CLUSTERS = 10
-```
-
-### 3. Zero-shot trainers do not save their models
-
-All three zero-shot evaluators load:
-
-```text
-outputs/<dataset>_zeroshot/gating.pt
-```
-
-but the corresponding training scripts neither create the directory nor save
-the gate. Add directory creation and a `torch.save(gate.state_dict(), ...)` call
-after training. The trainer/evaluator gate architecture must also remain exactly
-the same.
-
-### 4. Official train and test sets are combined before splitting
-
-Feature extraction concatenates the official training and test datasets. The
-subsequent labeled/unlabeled split and model evaluation operate on this combined
-array. Consequently, the printed accuracy and macro-F1 are **not measurements on
-an untouched official test set**, and data from the official test set can
-influence clustering, pseudo-labeling, tuning, and training.
-
-For publication-quality evaluation, save official train and test features
-separately, fit every learned component only on training data, reserve validation
-data for Optuna/model selection, and evaluate exactly once on the untouched test
-features.
-
-### 5. Evaluation is performed on the same feature pool used for training
-
-Soft-routing and zero-shot evaluation load the complete `features.npy`. This is
-an in-sample or transductive evaluation under the current design. It must not be
-described as held-out generalization without restructuring the splits.
-
-### 6. Device assignments are not portable
-
-Several SNN and pseudo-labeling scripts request `cuda:1` or `cuda:2`. They will
-fail on machines with fewer GPUs even when CUDA is available. Change `DEVICE` to
-an available device, normally `cuda:0`, or to `cpu`.
-
-### 7. Missing experts can break inference
-
-MoE training skips clusters containing fewer than 50 selected training samples.
-No checkpoint is written for a skipped expert, but inference attempts to load
-every expert index. Confirm that all expected `expert_<k>.pt` files exist, or add
-a fallback policy for empty/small clusters.
-
-### 8. Joint expert fine-tuning requires review
-
-In the MoE training scripts, the joint fine-tuning block calls backward on expert
-losses but does not retain/use the expert optimizers for `zero_grad()` and
-`step()`. The gate is updated, but the stated joint expert fine-tuning is not
-completed as written. Add explicit expert optimizer steps if joint expert updates
-are intended.
-
-### 9. Hyperparameter-search validation can leak information
-
-Expert Optuna splits are created from the combined labeled and pseudo-labeled
-pool. There is no independent dataset-level validation/test separation. Correct
-the data partitioning before treating Optuna scores as generalization estimates.
-
-### 10. OOD preprocessing differs from ID feature preprocessing
-
-ID features come from each feature-extraction script's ImageNet normalization,
-while some OOD scripts normalize with mean/std `0.5`. This creates an additional
-preprocessing shift beyond the intended dataset shift. Use a consistent
-EfficientNet preprocessing pipeline if the experiment is intended to isolate
-semantic OOD behavior.
-
-### 11. Reproducibility controls are incomplete
-
-The split scripts fix seed 42, but most NumPy, PyTorch, DataLoader, K-means,
-pair-sampling, Optuna, and CUDA operations are not comprehensively seeded.
-Repeated runs may differ. Add explicit global seeds and deterministic sampler or
-Optuna configurations where repeatability matters.
-
-### 12. Metric labels in a few print statements are copied from GTSRB
-
-Some MNIST and CIFAR SNN/pseudo-label scripts print `GTSRB` on completion. This
-does not change computation, but logs should be renamed to avoid confusion.
 
 ## Reproducibility
 
