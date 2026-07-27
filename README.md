@@ -37,7 +37,6 @@ design and write their artifacts into a common `outputs/` directory.
 - [Zero-shot experiments](#zero-shot-experiments)
 - [OOD-aware routing](#ood-aware-routing)
 - [Output artifacts](#output-artifacts)
-- [Known limitations and required corrections](#known-limitations-and-required-corrections)
 - [Reproducibility](#reproducibility)
 - [Publishing to GitHub](#publishing-to-github)
 - [Citation and license](#citation-and-license)
