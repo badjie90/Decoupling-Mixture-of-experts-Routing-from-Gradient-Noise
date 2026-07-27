@@ -667,16 +667,5 @@ If trained weights or selected small artifacts must be published, use Git LFS or
 a versioned release/artifact service. Document which source commit and
 configuration produced every shared artifact.
 
-## Citation and license
 
-Add a project code license before public release. Dataset licenses and citation
-requirements remain separate from the code license. If this project is used in
-research, cite the relevant MNIST, CIFAR-10, GTSRB, EfficientNet, mixture-of-
-experts, metric-learning, clustering, Optuna, SVHN, and Fashion-MNIST sources as
-appropriate for the experiment.
-
-When reporting results, clearly state that the current unmodified implementation
-combines official train and test data and performs transductive/in-sample
-evaluation. Results should only be described as held-out test performance after
-the data-partitioning issues above have been corrected.
 
